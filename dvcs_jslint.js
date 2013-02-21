@@ -5,13 +5,13 @@
   var jslintPath = process.argv[2],
       repoType = process.argv[3],
       exec = require('child_process').exec,
+      spawn = require('child_process').spawn,
       utils = require("util"),
       jsExtRegExp = /\.js\s*$/,
       okRegExp = /No problems found/,
       gitModRegExp = /(new file|modified)\:\s*(\S+\.js)\s*/,
       gitNotUpdated = "Changed but not updated",
       gitUntracked = "Untracked files:",
-      cmd = "node " + jslintPath + " ",
       dvCmd = repoType === "hg" ? "hg status" : "git status",
       processStatus, getHgFiles, getGitFiles, processFiles;
   
@@ -63,12 +63,44 @@
     return files;
   };
   processFiles = function (files) {
+    var left = 0;
+    var errorsFound = 0;
+    
+    var done = function (wasError) {
+      if (wasError) {
+        errorsFound++;
+      }
+      
+      left--;
+      if (left) { return; }
+      
+      console.log("JSLint errors: " + errorsFound);
+      setTimeout(function () {
+        process.exit(errorsFound);
+      }, 50);
+    };
+    
+    var checkedFiles = {};
+    
     files.forEach(function (file) {
-      exec(cmd + file, function (error, stdout, stderr) {
-        if (((stdout.length > 0)  && !okRegExp.test(stdout)) || 
-            (stderr.length > 0)) {
-          throw "JSLint error in " + file + ":\n" + stdout;
+      if (checkedFiles[file]) { return; }
+      checkedFiles[file] = true;
+      left++;
+      
+      var sub = spawn("node", [jslintPath, file]);
+      var stdout = [];
+      
+      sub.stdout.on("data", function (data) {
+        stdout.push(data.toString().replace(/^\s+$/, ""));
+      });
+      sub.stderr.on("data", function (data) {
+        console.log("stderr: " + data);
+      });
+      sub.on("exit", function (code) {
+        if (code) {
+          console.log(stdout.join(""));
         }
+        done(code);
       });
     });
   };

@@ -9,7 +9,7 @@
       utils = require("util"),
       jsExtRegExp = /\.js\s*$/,
       okRegExp = /No problems found/,
-      gitModRegExp = /(new file|modified)\:\s*(\S+\.js)\s*/,
+      gitModRegExp = /(new file|modified|renamed)\:\s*(?:\S+\.js\s+\-\>\s+)?(\S+\.js(?:on)?)\s*$/,
       gitNotUpdated = "Changed but not updated",
       gitUntracked = "Untracked files:",
       dvCmd = repoType === "hg" ? "hg status" : "git status",
@@ -63,6 +63,7 @@
     return files;
   };
   processFiles = function (files) {
+    
     var left = 0;
     var errorsFound = 0;
     
